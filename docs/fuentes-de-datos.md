@@ -50,13 +50,16 @@ no se encontró evidencia o hay contradicciones.
   `POST /v1.0/Login` con `api_key` y `secret` como **headers**;
   `GET /v1.0/PreciosCamara` con `idGrano` (entero), `fechaConcertacionDesde`,
   `fechaConcertacionHasta` y `page` (entero) en query string.
-- **Todavía no confirmado:** nombre del header que lleva el token (se asume
-  `Authorization`); ruta y método de `/Cotizacion` (se asume
-  `GET /v1.0/Cotizacion`); si la URL base debe incluir un prefijo como
-  `/gix`; formato de fecha (el manual dice `YYYY-MM-DD`, el Swagger tipifica
-  `date-time`; se envía `YYYY-MM-DD`). Los enlaces del manual son
-  `https://apiuat.bcr.com.ar/gix/index.html` (pruebas) y
-  `https://api.bcr.com.ar/gix/index.html` (productivo).
+- **También confirmado (capturas del 2026-11-23):** el token va en el header
+  `Authorization` (esquema "Bearer (apiKey)"); `GET /v1.0/Cotizacion` con
+  `page` como único parámetro; URL base de pruebas
+  `https://apiuat.bcr.com.ar/gix` (login completo:
+  `https://apiuat.bcr.com.ar/gix/v1.0/Login`).
+- **Todavía no confirmado:** formato de fecha (el manual dice `YYYY-MM-DD`,
+  el Swagger tipifica `date-time`; se envía `YYYY-MM-DD`); URL base
+  productiva (se supone `https://api.bcr.com.ar/gix`); y **si los datos del
+  ambiente UAT son reales o de prueba**. Mientras no se sepa, los lotes
+  importados desde UAT no deben tratarse como datos de mercado.
 - **Discrepancia del manual:** la tabla dice Trigo = `idGrano` 1, pero el
   ejemplo de respuesta muestra `iD_Grano: 8` para Trigo. Verificar con datos
   reales antes de mapear granos.

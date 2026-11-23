@@ -10,18 +10,23 @@ Confirmado en el Swagger de la BCR (capturas del usuario, 2026-11-23):
 * ``GET /v1.0/PreciosCamara`` con ``idGrano``, ``fechaConcertacionDesde``,
   ``fechaConcertacionHasta`` y ``page`` en query string.
 
+* El token va en el header ``Authorization`` (esquema "Bearer (apiKey)").
+* ``GET /v1.0/Cotizacion`` con ``page`` como único parámetro.
+* URL base de pruebas (UAT): ``https://apiuat.bcr.com.ar/gix``; la URL del
+  login queda ``https://apiuat.bcr.com.ar/gix/v1.0/Login``.
+
 Confirmado en el manual: token en ``data.token`` (empieza con "Bearer "),
 ``page`` para paginar, página de 10 registros, ``metadata.totalPages`` y
 rango máximo de 7 días por consulta.
 
 =========================  TODAVÍA NO CONFIRMADO  =========================
-Se asumió lo más habitual; se verifica con la primera respuesta real:
-* AUTH_HEADER: nombre del header con el token (se asume "Authorization").
-* La ruta y el método de /Cotizacion (se asume GET /v1.0/Cotizacion por
-  analogía; no se vio en el Swagger).
-* Si la URL base (BCR_GIX_BASE_URL) debe incluir un prefijo como "/gix".
+Se verifica con la primera respuesta real:
 * Formato de fecha: el manual dice YYYY-MM-DD, el Swagger tipifica el
   parámetro como date-time. Se envía YYYY-MM-DD (el del manual).
+* URL base productiva: se supone ``https://api.bcr.com.ar/gix`` por analogía
+  con la de pruebas; no está confirmada.
+* Si los datos del ambiente UAT son reales o de prueba. Por eso cada lote
+  guarda en ``parameters`` la URL base de la que vino.
 
 Discrepancia del manual: la tabla de ids dice Trigo=1, pero el ejemplo de
 respuesta muestra ``iD_Grano: 8`` para Trigo. Por eso el cliente recibe el
@@ -47,11 +52,11 @@ API_VERSION = "/v1.0"  # confirmado en el Swagger
 
 LOGIN_METHOD = "POST"  # confirmado
 LOGIN_PATH = f"{API_VERSION}/Login"  # confirmado
-DATA_METHOD = "GET"  # confirmado para /PreciosCamara
+DATA_METHOD = "GET"  # confirmado
 PRECIOS_CAMARA_PATH = f"{API_VERSION}/PreciosCamara"  # confirmado
-COTIZACION_PATH = f"{API_VERSION}/Cotizacion"  # NO confirmado (por analogía)
+COTIZACION_PATH = f"{API_VERSION}/Cotizacion"  # confirmado
 
-AUTH_HEADER = "Authorization"  # NO confirmado
+AUTH_HEADER = "Authorization"  # confirmado
 
 # El manual: "el rango de fechas no puede superar 7 días". Se usan ventanas de
 # 7 días corridos inclusive, que es la interpretación más conservadora.
@@ -131,6 +136,11 @@ class GixClient:
 
     def close(self) -> None:
         self._http.close()
+
+    @property
+    def base_url(self) -> str:
+        """URL base del ambiente al que apunta el cliente (sin credenciales)."""
+        return str(self._http.base_url).rstrip("/")
 
     def __repr__(self) -> str:  # nunca mostrar credenciales ni token
         return f"GixClient(base_url={self._http.base_url!s})"
@@ -264,6 +274,7 @@ def import_precios_camara(
         SOURCE_CODE,
         client.precios_camara(id_grano, desde, hasta),
         parameters={
+            "base_url": client.base_url,  # distingue pruebas (UAT) de producción
             "endpoint": PRECIOS_CAMARA_PATH,
             "idGrano": id_grano,
             "desde": desde.isoformat(),

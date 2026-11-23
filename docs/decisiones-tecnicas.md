@@ -111,10 +111,13 @@ Fecha de inicio del registro: 2026-11-22 (Sprint 01).
 - **Verificado contra el Swagger de la BCR:** login por `POST /v1.0/Login`
   con `api_key` y `secret` en headers (un primer supuesto de cuerpo JSON
   resultó incorrecto y se corrigió) y `GET /v1.0/PreciosCamara`.
-- **Todavía supuestos:** nombre del header del token, ruta/método de
-  `/Cotizacion` y prefijo de la URL base. Están en constantes al inicio del
-  módulo y en `docs/fuentes-de-datos.md`; se confirman con la primera
-  respuesta real.
+- **También verificado en el Swagger:** header `Authorization`,
+  `GET /v1.0/Cotizacion` y URL base de pruebas
+  `https://apiuat.bcr.com.ar/gix` (el prefijo `/gix` tiene test propio).
+- **Todavía sin confirmar:** formato de fecha (se envía `YYYY-MM-DD`), URL
+  base productiva y si los datos de UAT son reales. Cada lote guarda la
+  `base_url` en `import_batch.parameters` para distinguir pruebas de
+  producción y no mezclarlas.
 - **Credenciales:** `BCR_GIX_BASE_URL`, `BCR_GIX_API_KEY` y `BCR_GIX_SECRET`
   en `.env` (opcionales). Se leen como `SecretStr`; el cliente no las muestra
   en `repr` ni en mensajes de error, y los errores informan solo el código

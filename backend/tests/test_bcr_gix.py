@@ -130,6 +130,58 @@ def test_login_guarda_el_token_y_lo_envia_en_las_consultas():
     assert vistos[1] == ("datos", TOKEN)
 
 
+def test_respeta_el_prefijo_gix_de_la_url_base_real_de_pruebas():
+    # URL real del ambiente de pruebas, vista en el Swagger de la BCR.
+    rutas = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        rutas.append((request.method, str(request.url).split("?")[0]))
+        if request.url.path.endswith("/Login"):
+            return _login_ok(request)
+        return httpx.Response(200, json=_envelope([]))
+
+    cliente = GixClient(
+        "https://apiuat.bcr.com.ar/gix",
+        "k",
+        "s",
+        transport=httpx.MockTransport(handler),
+    )
+    with cliente:
+        list(cliente.precios_camara(21, date(2026, 1, 5), date(2026, 1, 5)))
+
+    assert rutas == [
+        ("POST", "https://apiuat.bcr.com.ar/gix/v1.0/Login"),
+        ("GET", "https://apiuat.bcr.com.ar/gix/v1.0/PreciosCamara"),
+    ]
+
+
+def test_cotizacion_usa_get_con_page_y_recorre_las_paginas():
+    consultas = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == LOGIN_PATH:
+            return _login_ok(request)
+        consultas.append((request.method, request.url.path, dict(request.url.params)))
+        page = int(request.url.params["page"])
+        return httpx.Response(
+            200, json=_envelope([{"fila_de_prueba": page}], page, 2)
+        )
+
+    with _cliente(handler) as cliente:
+        items = list(cliente.cotizacion())
+
+    assert items == [{"fila_de_prueba": 1}, {"fila_de_prueba": 2}]
+    assert consultas == [
+        ("GET", "/v1.0/Cotizacion", {"page": "1"}),
+        ("GET", "/v1.0/Cotizacion", {"page": "2"}),
+    ]
+
+
+def test_base_url_no_expone_credenciales():
+    with _cliente(_login_ok) as cliente:
+        assert cliente.base_url == "https://gix.example.test"
+
+
 def test_recorre_todas_las_paginas_en_orden():
     def handler(request: httpx.Request) -> httpx.Response:
         if request.url.path == LOGIN_PATH:
@@ -315,6 +367,8 @@ def test_importa_pizarra_como_registros_originales(db_session):
     assert guardados[0].payload["precio_Cotizacion"] in (100001, 100002)
     lote = db_session.get(ImportBatch, r.batch_id)
     assert lote.parameters["endpoint"] == PRECIOS_CAMARA_PATH
+    # El lote registra el ambiente, para no mezclar pruebas con producción.
+    assert lote.parameters["base_url"] == "https://gix.example.test"
     assert lote.parameters["idGrano"] == 21
 
 
