@@ -6,6 +6,7 @@ def test_database_url_usa_los_valores_configurados():
         postgres_db="db_prueba",
         postgres_user="usuario_prueba",
         postgres_password="clave_de_prueba",
+        postgres_host="127.0.0.1",
         postgres_port=5433,
     )
 
@@ -23,6 +24,7 @@ def test_database_url_soporta_caracteres_especiales_en_la_clave():
         postgres_db="db",
         postgres_user="user",
         postgres_password="p@ss:w/ord#1",
+        postgres_host="127.0.0.1",
     )
 
     url = settings.database_url

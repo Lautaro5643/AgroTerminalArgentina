@@ -81,6 +81,27 @@ Fecha de inicio del registro: 2026-11-22 (Sprint 01).
   PostgreSQL real de prueba; se comprobó que la base rechaza duplicados,
   estados inválidos y claves foráneas inexistentes.
 
+## D-010. Importador genérico y tests con rollback
+
+- **Decisión:** `app/ingestion/importer.py` expone `run_import(session,
+  source_code, records)`. Guarda cada registro original en `raw_record`
+  (JSONB sin modificar), deduplica por `(fuente, hash)` con
+  `INSERT ... ON CONFLICT DO NOTHING`, registra registros inválidos en
+  `import_error` y cierra el lote con estado `succeeded`, `partial` o
+  `failed`.
+- **Límite de responsabilidad:** no conoce ninguna fuente. Cada proveedor
+  necesita un adaptador propio (conexión, paginación, partir la respuesta en
+  registros) y un paso posterior de normalización a tablas de precios.
+- **Errores de la fuente:** si la fuente falla a mitad de camino se conserva
+  lo cargado, el lote queda `partial`/`failed` y la excepción se vuelve a
+  lanzar. En el registro de errores se guarda solo el tipo de excepción, no
+  su mensaje (podría contener URLs o credenciales).
+- **Errores de base de datos:** se propagan; el lote queda en `running`
+  (importación interrumpida).
+- **Tests:** los que usan PostgreSQL corren dentro de una transacción que se
+  deshace, por lo que no dejan datos; se saltean solos si la base no está
+  disponible o faltan migraciones. Usan datos de prueba inventados.
+
 ## Reglas de datos vigentes (aplican a todo el desarrollo futuro)
 
 1. Preservar los datos originales; la normalización no los reemplaza.
