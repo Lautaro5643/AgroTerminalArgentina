@@ -6,7 +6,6 @@ ni confirma el comportamiento real de la API (login, método HTTP y nombre del
 header son supuestos; ver el encabezado de app/ingestion/bcr_gix.py).
 """
 
-import json
 from datetime import date, timedelta
 
 import httpx
@@ -15,6 +14,8 @@ from sqlalchemy import func, select
 
 from app.core.config import Settings
 from app.ingestion.bcr_gix import (
+    LOGIN_PATH,
+    PRECIOS_CAMARA_PATH,
     GixAuthError,
     GixClient,
     GixError,
@@ -100,8 +101,16 @@ def test_login_guarda_el_token_y_lo_envia_en_las_consultas():
     vistos = []
 
     def handler(request: httpx.Request) -> httpx.Response:
-        if request.url.path == "/Login":
-            vistos.append(("login", json.loads(request.content)))
+        if request.url.path == LOGIN_PATH:
+            vistos.append(
+                (
+                    "login",
+                    request.method,
+                    request.headers.get("api_key"),
+                    request.headers.get("secret"),
+                    request.content,
+                )
+            )
             return _login_ok(request)
         vistos.append(("datos", request.headers.get("Authorization")))
         return httpx.Response(200, json=_envelope([_item(1)]))
@@ -110,13 +119,20 @@ def test_login_guarda_el_token_y_lo_envia_en_las_consultas():
         items = list(cliente.precios_camara(21, date(2026, 1, 5), date(2026, 1, 5)))
 
     assert items == [_item(1)]
-    assert vistos[0] == ("login", {"api_key": "api-key-de-prueba", "secret": "secreto-de-prueba"})
+    # Según el Swagger: POST con api_key y secret como HEADERS (sin cuerpo).
+    assert vistos[0] == (
+        "login",
+        "POST",
+        "api-key-de-prueba",
+        "secreto-de-prueba",
+        b"",
+    )
     assert vistos[1] == ("datos", TOKEN)
 
 
 def test_recorre_todas_las_paginas_en_orden():
     def handler(request: httpx.Request) -> httpx.Response:
-        if request.url.path == "/Login":
+        if request.url.path == LOGIN_PATH:
             return _login_ok(request)
         page = int(request.url.params["page"])
         paginas = {1: [_item(1), _item(2)], 2: [_item(3), _item(4)], 3: [_item(5)]}
@@ -130,16 +146,19 @@ def test_recorre_todas_las_paginas_en_orden():
 
 def test_envia_los_parametros_documentados_y_parte_el_rango():
     consultas = []
+    rutas = []
 
     def handler(request: httpx.Request) -> httpx.Response:
-        if request.url.path == "/Login":
+        if request.url.path == LOGIN_PATH:
             return _login_ok(request)
+        rutas.append((request.method, request.url.path))
         consultas.append(dict(request.url.params))
         return httpx.Response(200, json=_envelope([]))
 
     with _cliente(handler) as cliente:
         list(cliente.precios_camara(21, date(2026, 1, 1), date(2026, 1, 15)))
 
+    assert set(rutas) == {("GET", "/v1.0/PreciosCamara")}
     assert len(consultas) == 3  # 15 días -> 7 + 7 + 1
     assert all(c["idGrano"] == "21" for c in consultas)
     assert consultas[0]["fechaConcertacionDesde"] == "2026-01-01"
@@ -151,7 +170,7 @@ def test_si_el_token_vence_renueva_y_reintenta_una_vez():
     estado = {"logins": 0, "datos": 0}
 
     def handler(request: httpx.Request) -> httpx.Response:
-        if request.url.path == "/Login":
+        if request.url.path == LOGIN_PATH:
             estado["logins"] += 1
             return _login_ok(request)
         estado["datos"] += 1
@@ -170,7 +189,7 @@ def test_si_el_token_sigue_rechazado_falla_sin_reintentar_en_bucle():
     estado = {"datos": 0}
 
     def handler(request: httpx.Request) -> httpx.Response:
-        if request.url.path == "/Login":
+        if request.url.path == LOGIN_PATH:
             return _login_ok(request)
         estado["datos"] += 1
         return httpx.Response(401)
@@ -196,7 +215,7 @@ def test_login_sin_token_en_la_respuesta():
 
 def test_error_del_servidor_informa_el_codigo_sin_filtrar_el_cuerpo():
     def handler(request: httpx.Request) -> httpx.Response:
-        if request.url.path == "/Login":
+        if request.url.path == LOGIN_PATH:
             return _login_ok(request)
         return httpx.Response(500, text="detalle interno con TOKEN-SECRETO")
 
@@ -210,7 +229,7 @@ def test_error_del_servidor_informa_el_codigo_sin_filtrar_el_cuerpo():
 
 def test_status_de_error_dentro_del_cuerpo_tambien_falla():
     def handler(request: httpx.Request) -> httpx.Response:
-        if request.url.path == "/Login":
+        if request.url.path == LOGIN_PATH:
             return _login_ok(request)
         cuerpo = _envelope([])
         cuerpo["status"] = {"code": 400, "message": "Bad request", "details": ""}
@@ -223,7 +242,7 @@ def test_status_de_error_dentro_del_cuerpo_tambien_falla():
 
 def test_respuesta_sin_lista_de_datos_falla():
     def handler(request: httpx.Request) -> httpx.Response:
-        if request.url.path == "/Login":
+        if request.url.path == LOGIN_PATH:
             return _login_ok(request)
         return httpx.Response(200, json={"status": {"code": 200}, "data": None})
 
@@ -276,7 +295,7 @@ def test_from_settings_con_configuracion_completa():
 
 
 def _handler_con_datos(request: httpx.Request) -> httpx.Response:
-    if request.url.path == "/Login":
+    if request.url.path == LOGIN_PATH:
         return _login_ok(request)
     return httpx.Response(200, json=_envelope([_item(1), _item(2)]))
 
@@ -295,7 +314,7 @@ def test_importa_pizarra_como_registros_originales(db_session):
     assert sorted(g.payload["iD_Pizarra"] for g in guardados) == [1001, 1002]
     assert guardados[0].payload["precio_Cotizacion"] in (100001, 100002)
     lote = db_session.get(ImportBatch, r.batch_id)
-    assert lote.parameters["endpoint"] == "/PreciosCamara"
+    assert lote.parameters["endpoint"] == PRECIOS_CAMARA_PATH
     assert lote.parameters["idGrano"] == 21
 
 
@@ -325,7 +344,7 @@ def test_si_la_api_falla_a_mitad_se_conserva_lo_importado(db_session):
     estado = {"datos": 0}
 
     def handler(request: httpx.Request) -> httpx.Response:
-        if request.url.path == "/Login":
+        if request.url.path == LOGIN_PATH:
             return _login_ok(request)
         estado["datos"] += 1
         if estado["datos"] == 1:

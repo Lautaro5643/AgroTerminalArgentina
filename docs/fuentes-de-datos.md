@@ -46,12 +46,17 @@ no se encontró evidencia o hay contradicciones.
   `movimiento_Cotizacion`, `iD_Grano`, `nombre_Grano`, `orden_Grano`,
   `precio_Dolar`, `cotizacion_Dolar` y `fecha_Cotizacion_Dolar`. El token del
   login viene en `data.token` y ya empieza con "Bearer ".
-- **No figura en el manual [No confirmado]:** método HTTP y forma de enviar
-  las credenciales en `/Login`; nombre del header del token; método HTTP de
-  los endpoints de datos; URL base de cada ambiente (el manual solo da los
-  enlaces `https://apiuat.bcr.com.ar/gix/index.html` y
-  `https://api.bcr.com.ar/gix/index.html`, que parecen ser el Swagger).
-  El cliente usa supuestos marcados en `app/ingestion/bcr_gix.py`.
+- **Confirmado en el Swagger (capturas del 2026-11-23):**
+  `POST /v1.0/Login` con `api_key` y `secret` como **headers**;
+  `GET /v1.0/PreciosCamara` con `idGrano` (entero), `fechaConcertacionDesde`,
+  `fechaConcertacionHasta` y `page` (entero) en query string.
+- **Todavía no confirmado:** nombre del header que lleva el token (se asume
+  `Authorization`); ruta y método de `/Cotizacion` (se asume
+  `GET /v1.0/Cotizacion`); si la URL base debe incluir un prefijo como
+  `/gix`; formato de fecha (el manual dice `YYYY-MM-DD`, el Swagger tipifica
+  `date-time`; se envía `YYYY-MM-DD`). Los enlaces del manual son
+  `https://apiuat.bcr.com.ar/gix/index.html` (pruebas) y
+  `https://api.bcr.com.ar/gix/index.html` (productivo).
 - **Discrepancia del manual:** la tabla dice Trigo = `idGrano` 1, pero el
   ejemplo de respuesta muestra `iD_Grano: 8` para Trigo. Verificar con datos
   reales antes de mapear granos.

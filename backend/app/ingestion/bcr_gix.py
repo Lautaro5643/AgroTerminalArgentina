@@ -4,21 +4,24 @@ Basado en el manual de usuario de la BCR (abril 2025). Entrega los registros
 originales (los items de ``data``, sin modificar) para pasarlos a
 ``run_import``. No normaliza ni convierte nada.
 
-=====================  SUPUESTOS NO CONFIRMADOS POR EL MANUAL  =====================
-El manual NO indica lo siguiente. Se asumió lo más habitual y debe verificarse
-contra el Swagger de la BCR (https://apiuat.bcr.com.ar/gix/index.html) o con
-la primera respuesta real. Todo está concentrado en las constantes de abajo:
+=============================  QUÉ ESTÁ CONFIRMADO  =============================
+Confirmado en el Swagger de la BCR (capturas del usuario, 2026-11-23):
+* ``POST /v1.0/Login`` recibe ``api_key`` y ``secret`` como HEADERS.
+* ``GET /v1.0/PreciosCamara`` con ``idGrano``, ``fechaConcertacionDesde``,
+  ``fechaConcertacionHasta`` y ``page`` en query string.
 
-* LOGIN_METHOD / LOGIN_PATH / cómo se envían api_key y secret (se asume POST
-  con cuerpo JSON {"api_key": ..., "secret": ...}).
-* AUTH_HEADER: nombre del header del token (se asume "Authorization").
-* Método HTTP de /PreciosCamara y /Cotizacion (se asume GET).
-* URL base de cada ambiente: no figura; se configura en BCR_GIX_BASE_URL.
+Confirmado en el manual: token en ``data.token`` (empieza con "Bearer "),
+``page`` para paginar, página de 10 registros, ``metadata.totalPages`` y
+rango máximo de 7 días por consulta.
 
-Sí figura en el manual (y se usa como tal): token en ``data.token`` (empieza
-con "Bearer "), parámetros en query string, ``page`` para paginar, página de
-10 registros, ``metadata.totalPages``, fechas YYYY-MM-DD y rango máximo de
-7 días por consulta.
+=========================  TODAVÍA NO CONFIRMADO  =========================
+Se asumió lo más habitual; se verifica con la primera respuesta real:
+* AUTH_HEADER: nombre del header con el token (se asume "Authorization").
+* La ruta y el método de /Cotizacion (se asume GET /v1.0/Cotizacion por
+  analogía; no se vio en el Swagger).
+* Si la URL base (BCR_GIX_BASE_URL) debe incluir un prefijo como "/gix".
+* Formato de fecha: el manual dice YYYY-MM-DD, el Swagger tipifica el
+  parámetro como date-time. Se envía YYYY-MM-DD (el del manual).
 
 Discrepancia del manual: la tabla de ids dice Trigo=1, pero el ejemplo de
 respuesta muestra ``iD_Grano: 8`` para Trigo. Por eso el cliente recibe el
@@ -40,15 +43,15 @@ from app.models import DataSource
 
 SOURCE_CODE = "bcr_gix"
 
-# --- Supuestos (ver el encabezado del módulo) ---
-LOGIN_METHOD = "POST"
-LOGIN_PATH = "/Login"
-AUTH_HEADER = "Authorization"
-DATA_METHOD = "GET"
-# ------------------------------------------------
+API_VERSION = "/v1.0"  # confirmado en el Swagger
 
-PRECIOS_CAMARA_PATH = "/PreciosCamara"
-COTIZACION_PATH = "/Cotizacion"
+LOGIN_METHOD = "POST"  # confirmado
+LOGIN_PATH = f"{API_VERSION}/Login"  # confirmado
+DATA_METHOD = "GET"  # confirmado para /PreciosCamara
+PRECIOS_CAMARA_PATH = f"{API_VERSION}/PreciosCamara"  # confirmado
+COTIZACION_PATH = f"{API_VERSION}/Cotizacion"  # NO confirmado (por analogía)
+
+AUTH_HEADER = "Authorization"  # NO confirmado
 
 # El manual: "el rango de fechas no puede superar 7 días". Se usan ventanas de
 # 7 días corridos inclusive, que es la interpretación más conservadora.
@@ -139,7 +142,7 @@ class GixClient:
         response = self._http.request(
             LOGIN_METHOD,
             LOGIN_PATH,
-            json={"api_key": self._api_key, "secret": self._secret},
+            headers={"api_key": self._api_key, "secret": self._secret},
         )
         if response.status_code in (400, 401, 403):
             raise GixAuthError(f"Login rechazado (HTTP {response.status_code})")

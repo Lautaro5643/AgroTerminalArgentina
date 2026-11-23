@@ -108,10 +108,13 @@ Fecha de inicio del registro: 2026-11-22 (Sprint 01).
   el token, renueva una vez ante HTTP 401, parte los rangos en ventanas de 7
   días corridos, recorre todas las páginas y entrega los items de `data` sin
   modificar a `run_import`.
-- **Supuestos no confirmados** (el manual no los dice): forma del login,
-  nombre del header y método HTTP. Están en constantes al inicio del módulo y
-  en `docs/fuentes-de-datos.md`. Se verifican con el Swagger de la BCR o con
-  la primera respuesta real.
+- **Verificado contra el Swagger de la BCR:** login por `POST /v1.0/Login`
+  con `api_key` y `secret` en headers (un primer supuesto de cuerpo JSON
+  resultó incorrecto y se corrigió) y `GET /v1.0/PreciosCamara`.
+- **Todavía supuestos:** nombre del header del token, ruta/método de
+  `/Cotizacion` y prefijo de la URL base. Están en constantes al inicio del
+  módulo y en `docs/fuentes-de-datos.md`; se confirman con la primera
+  respuesta real.
 - **Credenciales:** `BCR_GIX_BASE_URL`, `BCR_GIX_API_KEY` y `BCR_GIX_SECRET`
   en `.env` (opcionales). Se leen como `SecretStr`; el cliente no las muestra
   en `repr` ni en mensajes de error, y los errores informan solo el código
