@@ -65,6 +65,22 @@ Fecha de inicio del registro: 2026-11-22 (Sprint 01).
 - **Consecuencia:** los cambios pasan de `dev` a `main` cuando están
   verificados en el entorno local.
 
+## D-009. Esquema de ingesta independiente de la fuente
+
+- **Decisión:** tablas `data_source`, `import_batch`, `raw_record` e
+  `import_error`. El registro original se guarda como JSONB sin modificar,
+  con su hash SHA-256; la unicidad `(source_id, payload_hash)` evita
+  duplicados. Los lotes registran parámetros, versión de normalización y
+  contadores.
+- **Motivo:** trazabilidad y preservación de originales (reglas de datos).
+- **Pendiente deliberado:** las tablas de precios normalizados (pizarra,
+  tipo de cambio, futuros) no se crean hasta ver una respuesta real de cada
+  fuente. Supuestos a verificar entonces: unidad y moneda de cada precio,
+  significado del indicador "estimado" de la BCR.
+- **Verificación:** la migración se aplicó, revirtió y reaplicó sobre un
+  PostgreSQL real de prueba; se comprobó que la base rechaza duplicados,
+  estados inválidos y claves foráneas inexistentes.
+
 ## Reglas de datos vigentes (aplican a todo el desarrollo futuro)
 
 1. Preservar los datos originales; la normalización no los reemplaza.

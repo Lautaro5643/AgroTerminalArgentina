@@ -12,8 +12,7 @@ from sqlalchemy import create_engine, pool
 from app.core.config import get_settings
 from app.db.base import Base
 
-# Importar acá los modelos a medida que existan, para que Alembic los detecte:
-#   from app.modules.<modulo> import models  # noqa: F401
+import app.models  # noqa: F401  (registra los modelos en Base.metadata)
 
 config = context.config
 
