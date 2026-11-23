@@ -7,6 +7,7 @@ variables de entorno reales). Nunca guardar contraseñas en el código.
 from functools import lru_cache
 from pathlib import Path
 
+from pydantic import SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from sqlalchemy.engine import URL
 
@@ -22,6 +23,11 @@ class Settings(BaseSettings):
     postgres_password: str
     postgres_port: int = 5433
     postgres_host: str = "127.0.0.1"
+
+    # API GIX de la BCR (opcionales: solo hacen falta para importar de la BCR).
+    bcr_gix_base_url: str | None = None
+    bcr_gix_api_key: SecretStr | None = None
+    bcr_gix_secret: SecretStr | None = None
 
     model_config = SettingsConfigDict(
         env_file=PROJECT_ROOT / ".env",

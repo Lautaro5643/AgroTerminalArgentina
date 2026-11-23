@@ -102,6 +102,28 @@ Fecha de inicio del registro: 2026-11-22 (Sprint 01).
   deshace, por lo que no dejan datos; se saltean solos si la base no está
   disponible o faltan migraciones. Usan datos de prueba inventados.
 
+## D-011. Cliente de la API GIX (BCR) con supuestos aislados
+
+- **Decisión:** `app/ingestion/bcr_gix.py` usa `httpx`. Hace login, reutiliza
+  el token, renueva una vez ante HTTP 401, parte los rangos en ventanas de 7
+  días corridos, recorre todas las páginas y entrega los items de `data` sin
+  modificar a `run_import`.
+- **Supuestos no confirmados** (el manual no los dice): forma del login,
+  nombre del header y método HTTP. Están en constantes al inicio del módulo y
+  en `docs/fuentes-de-datos.md`. Se verifican con el Swagger de la BCR o con
+  la primera respuesta real.
+- **Credenciales:** `BCR_GIX_BASE_URL`, `BCR_GIX_API_KEY` y `BCR_GIX_SECRET`
+  en `.env` (opcionales). Se leen como `SecretStr`; el cliente no las muestra
+  en `repr` ni en mensajes de error, y los errores informan solo el código
+  HTTP, nunca el cuerpo.
+- **Tests:** con respuestas simuladas (`httpx.MockTransport`) y valores
+  inventados. Prueban el comportamiento del cliente, **no** que la API real
+  responda así.
+- **Tests de base de datos rápidos:** la conexión se prueba una sola vez con
+  un tiempo máximo de 3 segundos; si falla, todos los tests de base se
+  saltean. (Antes cada test reintentaba y la suite llegó a tardar 21 min con
+  la base caída.)
+
 ## Reglas de datos vigentes (aplican a todo el desarrollo futuro)
 
 1. Preservar los datos originales; la normalización no los reemplaza.

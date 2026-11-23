@@ -37,6 +37,26 @@ no se encontró evidencia o hay contradicciones.
 - **Formato [Leído]:** JSON con bloques `status`, `metadata` y `data`.
 - **Costo y condiciones de uso [No confirmado]:** el manual no los menciona.
   Consultar a la BCR (protocolo: protocologix@bcr.com).
+- **Estructura de la respuesta [Leído, ejemplo del manual]:** JSON con
+  `status` (`code`, `message`, `details`), `metadata` (`totalRecords`,
+  `pageSize`, `currentPage`, `totalPages`, `nextPageLink`, `prevPageLink`) y
+  `data`. Cada item de `/PreciosCamara` trae `iD_Pizarra`,
+  `fecha_Operacion_Pizarra`, `iD_Cotizacion`, `precio_Cotizacion`,
+  `esEstimado_Cotizacion`, `variacion_Precio_Cotizacion`,
+  `movimiento_Cotizacion`, `iD_Grano`, `nombre_Grano`, `orden_Grano`,
+  `precio_Dolar`, `cotizacion_Dolar` y `fecha_Cotizacion_Dolar`. El token del
+  login viene en `data.token` y ya empieza con "Bearer ".
+- **No figura en el manual [No confirmado]:** método HTTP y forma de enviar
+  las credenciales en `/Login`; nombre del header del token; método HTTP de
+  los endpoints de datos; URL base de cada ambiente (el manual solo da los
+  enlaces `https://apiuat.bcr.com.ar/gix/index.html` y
+  `https://api.bcr.com.ar/gix/index.html`, que parecen ser el Swagger).
+  El cliente usa supuestos marcados en `app/ingestion/bcr_gix.py`.
+- **Discrepancia del manual:** la tabla dice Trigo = `idGrano` 1, pero el
+  ejemplo de respuesta muestra `iD_Grano: 8` para Trigo. Verificar con datos
+  reales antes de mapear granos.
+- **Sin verificar con datos reales:** unidad y moneda de `precio_Cotizacion`,
+  y significado de `esEstimado_Cotizacion` y `movimiento_Cotizacion`.
 - **Implicancia:** cargar historia es posible pero lento (ventanas de 7 días,
   10 por página). El importador debe manejar paginación, expiración del token
   y reintentos.
