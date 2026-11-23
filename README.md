@@ -72,6 +72,34 @@ docker compose stop
 > No uses `docker compose down -v` salvo que quieras borrar la base:
 > la opción `-v` elimina el volumen con todos los datos.
 
+## API
+
+```powershell
+uvicorn app.main:app --app-dir backend --reload
+```
+
+- `http://127.0.0.1:8000/health`: la aplicación responde.
+- `http://127.0.0.1:8000/health/db`: la aplicación se conecta a PostgreSQL.
+- `http://127.0.0.1:8000/docs`: documentación interactiva.
+
+## Tests
+
+```powershell
+python -m pytest -q
+```
+
+## Migraciones de base de datos (Alembic)
+
+Comandos desde la raíz del proyecto, con PostgreSQL corriendo:
+
+```powershell
+alembic upgrade head      # aplica las migraciones pendientes
+alembic current           # muestra la versión aplicada
+alembic revision --autogenerate -m "descripcion"   # genera una migración nueva
+```
+
+La URL de conexión sale del `.env`, no de `alembic.ini`.
+
 ## Flujo de trabajo con Git
 
 - `main`: rama estable.
@@ -89,5 +117,5 @@ docs/           documentación y decisiones técnicas
 
 ## Próximos pasos del Sprint 01
 
-FastAPI con endpoint `/health`, conexión SQLAlchemy a PostgreSQL, Alembic,
-tests iniciales y registro de decisiones técnicas.
+Registro de decisiones técnicas (`docs/`) y cierre del sprint contra los
+criterios de aceptación.
