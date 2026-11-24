@@ -130,6 +130,26 @@ Fecha de inicio del registro: 2026-11-22 (Sprint 01).
   saltean. (Antes cada test reintentaba y la suite llegó a tardar 21 min con
   la base caída.)
 
+## D-012. Maestro de instrumentos, unidades y vencimientos estimados
+
+- **Decisión:** `app/instruments/` con tres módulos. `units.py` hace todas las
+  conversiones con `Decimal` (rechaza `float`, `bool` y texto) y precios con
+  unidad explícita (`Price`), de modo que convertir un precio en la unidad
+  equivocada falla con `UnitMismatchError`. `contracts.py` describe cada
+  contrato (CBOT ZS y tres de A3) citando su fuente y declarando lo no
+  confirmado (`None` o `caveats`). `expiry.py` aplica las reglas de vencimiento.
+- **Motivo:** el error más caro y menos visible es mezclar toneladas con
+  bushels o dólares con centavos; un contrato CBOT (≈136 t) tampoco es
+  comparable uno a uno con uno de A3 (100, 10 o 5 t).
+- **Vencimientos:** son **estimaciones**, no fechas oficiales. No se incluyen
+  feriados porque no se verificó ningún calendario oficial; el llamador los
+  pasa. La regla de Soja Chicago se cita pero no se calcula.
+- **Pendiente:** pesos por bushel confirmados en una sola fuente secundaria
+  (falta el manual USDA AH-697); vigencia y meses listados de A3.
+  Detalle y fuentes en `docs/especificaciones-contratos.md`.
+- **Alcance:** solo soja. Sin rondeo implícito: quien llama decide los
+  decimales.
+
 ## Reglas de datos vigentes (aplican a todo el desarrollo futuro)
 
 1. Preservar los datos originales; la normalización no los reemplaza.

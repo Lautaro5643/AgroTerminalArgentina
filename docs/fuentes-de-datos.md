@@ -128,6 +128,41 @@ A3 Mercados es la entidad que integra a Matba Rofex.
   del proyecto, no reverificado): los precios históricos por contrato serían
   de pago vía CME DataMine. Comprar datos requiere tu autorización explícita.
 
+## 5. Fuentes abiertas adicionales (investigadas el 2026-11-23)
+
+Solo lectura de documentación; no se hizo ninguna llamada real a estas APIs.
+
+### 5.1 BCRA - API de Estadísticas Cambiarias v1.0
+- **Qué es [Leído]:** API oficial del Banco Central. Base
+  `https://api.bcra.gob.ar/estadisticascambiarias/v1.0/`.
+- **Endpoints [Leído]:** `GET /Maestros/Divisas` (monedas ISO);
+  `GET /Cotizaciones?fecha=yyyy-MM-dd` (sin `fecha`, la última disponible; no
+  acepta fechas futuras); `GET /Cotizaciones/{moneda}` con `fechadesde`,
+  `fechahasta`, `limit` (mayor que 10 y menor que 1000, por defecto 1000) y
+  `offset`.
+- **Acceso [Leído]:** sin registro, token ni API key. Respuesta JSON con
+  `status` y `results` (más `metadata.resultset` en la evolución por moneda).
+- **No confirmado:** reglas concretas del control de tráfico por IP (solo se
+  menciona que existe); desde qué fecha hay datos; licencia o condiciones de uso
+  (la página remite a un "Aviso legal" que no se leyó); qué tipo de cambio exacto
+  devuelve cada cotización (por ejemplo, si es la Comunicación A 3500).
+- **Fuente:** manual de la API,
+  `https://www.bcra.gob.ar/archivos/Catalogo/Content/files/pdf/estadisticascambiarias-v1.pdf`.
+
+### 5.2 Secretaría de Agricultura - series de siembra, producción y rendimiento
+- **Qué es [Parcial]:** en `datos.gob.ar` hay un dataset "Agroindustria: soja -
+  siembra, cosecha, producción, rendimiento" (Dirección Nacional de Agricultura)
+  con superficie sembrada, superficie cosechada, producción y rendimiento.
+- **Ambigüedad:** la página consultada tenía título de maní y un historial de
+  actualizaciones de soja; no se pudo determinar a qué corresponde cada dato. La
+  segunda consulta falló y no devolvió contenido.
+- **No confirmado:** formato de descarga, URL del recurso, granularidad
+  (provincia o departamento), fecha de última actualización y licencia.
+  Frecuencia declarada: "eventual".
+
+### 5.3 NOAA (clima)
+- **No investigado** en esta pasada.
+
 ## Preguntas abiertas para resolver (de menor a mayor esfuerzo)
 
 1. Pedir acceso a API GIX (formulario BCR) y preguntar costo y condiciones.
