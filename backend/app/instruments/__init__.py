@@ -13,6 +13,7 @@ from app.instruments.contracts import (
     get_contract,
 )
 from app.instruments.expiry import estimate_last_trading_day
+from app.instruments.price_types import PriceType
 from app.instruments.units import (
     Commodity,
     Price,
@@ -34,6 +35,7 @@ __all__ = [
     "ContractSpec",
     "ExpiryRule",
     "Price",
+    "PriceType",
     "PriceUnit",
     "Settlement",
     "SizeUnit",

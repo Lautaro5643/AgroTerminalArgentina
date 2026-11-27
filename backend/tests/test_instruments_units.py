@@ -8,6 +8,8 @@ from decimal import Decimal
 
 import pytest
 
+from app.instruments.units import as_decimal
+
 from app.instruments import (
     Commodity,
     Price,
@@ -115,3 +117,9 @@ def test_el_precio_es_inmutable():
 
     with pytest.raises(Exception):
         precio.value = D("2")
+
+
+@pytest.mark.parametrize("valor", [Decimal("NaN"), Decimal("Infinity"), Decimal("-Infinity")])
+def test_as_decimal_rechaza_no_finitos(valor):
+    with pytest.raises(ValueError):
+        as_decimal(valor)

@@ -5,9 +5,11 @@ from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
+from app.api.tools import router as tools_router
 from app.db.session import get_db
 
 api_router = APIRouter()
+api_router.include_router(tools_router)
 
 
 @api_router.get("/health", tags=["system"])

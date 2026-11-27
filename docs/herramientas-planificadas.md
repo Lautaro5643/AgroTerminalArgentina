@@ -57,9 +57,13 @@ cuesta cargarlos. Ejemplo conocido: la API GIX limita cada consulta a 7 días y
 
 ## Definiciones que hay que confirmar con el usuario
 
-- **Campaña:** cuándo empieza y termina para cada cultivo. No se asume.
-- **"Esta fecha":** misma fecha calendario o mismo día de campaña. Hay que
-  decidir el tratamiento de años bisiestos y de series semanales.
+- **Campaña:** cuándo empieza y termina para cada cultivo. **Pendiente.** El
+  usuario describió la rotación típica (soja de primera en nov/dic, trigo de
+  segunda, soja de tercera), que no equivale a un año comercial. No se asume
+  ninguna fecha; la comparación "campaña por campaña" espera esta definición.
+- **"Esta fecha":** **definido el 2026-11-27: misma fecha de calendario.** El 29/2
+  no se reemplaza por el 28/2 (queda como faltante). Las series semanales usan
+  `tolerance_days` y se informa la fecha real usada.
 
 ## Calculadora de pase contra costo de embolsar
 
@@ -88,11 +92,14 @@ fuente de datos de acopios.** Hasta entonces el diseño parte de carga manual,
 guardando para cada dato su origen y su fecha. Pregunta abierta: qué datos de
 acopios se consultan hoy y de dónde salen.
 
-## Orden propuesto
+## Estado y orden
 
-1. Comparador estacional y relaciones (no dependen de fuentes externas; se
-   prueban con datos de prueba marcados como tales).
-2. Calculadora de pase y guardado.
+1. **Hecho (2026-11-27):** comparador estacional y relaciones
+   (`app/analytics/`), probados con datos de prueba marcados como tales.
+2. **Hecho (2026-11-27):** calculadora de pase y guardado
+   (`app/calculators/carry.py`, `POST /tools/carry`). Falta sumarle el costo de
+   warrant (todo cargado por el usuario).
 3. Libro de posiciones.
 4. Conectar fuentes a medida que lleguen los accesos, empezando por las ya
    verificadas, y verificar las no investigadas una por una.
+5. Acopios: el usuario todavía no definió qué quiere ver; se retoma después.

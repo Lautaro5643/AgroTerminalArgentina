@@ -62,7 +62,15 @@ def _as_decimal(value: object, name: str = "valor") -> Decimal:
             f"{name} debe ser Decimal o int, no {type(value).__name__}: "
             "los float no se aceptan por su imprecisión"
         )
-    return Decimal(value)
+    number = Decimal(value)
+    if not number.is_finite():
+        raise ValueError(f"{name} debe ser un número finito, no {number}")
+    return number
+
+
+def as_decimal(value: object, name: str = "valor") -> Decimal:
+    """Versión pública de la validación de números: Decimal o int, nunca float."""
+    return _as_decimal(value, name)
 
 
 @dataclass(frozen=True)

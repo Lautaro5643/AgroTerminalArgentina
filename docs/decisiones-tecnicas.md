@@ -150,6 +150,38 @@ Fecha de inicio del registro: 2026-11-22 (Sprint 01).
 - **Alcance:** solo soja. Sin rondeo implícito: quien llama decide los
   decimales.
 
+## D-013. Comparador estacional, relaciones y calculadora de pase
+
+- **Decisión:** tres piezas independientes de las fuentes.
+  `app/analytics/` (series, comparador estacional, relaciones) y
+  `app/calculators/carry.py` (pase contra costo de guardado), esta última
+  expuesta en `POST /tools/carry`.
+- **"Misma fecha":** la misma fecha de calendario en cada año anterior
+  (definido por el usuario el 2026-11-27). El 29/2 no se reemplaza por el 28/2:
+  los años sin esa fecha quedan como faltantes.
+- **Campaña:** no se definió una fecha de inicio por cultivo. La descripción del
+  usuario (soja de primera en nov/dic, trigo de segunda, soja de tercera) es
+  una rotación, no un año comercial. Por eso el comparador trabaja por fecha de
+  calendario y todavía no hay comparación "campaña por campaña".
+- **Sin interpolación:** un año sin dato figura como faltante con su motivo. Con
+  `tolerance_days` se acepta la observación anterior más cercana y se informa
+  qué fecha real se usó. Nunca se mira hacia adelante.
+- **Series con trazabilidad:** cada `Series` declara unidad, tipo de precio
+  (settlement/último/bid/ask/sin especificar), tipo de dato (real, histórico,
+  prueba o simulado) y fuente. Las relaciones rechazan mezclar tipos de dato o
+  de precio, y la diferencia exige la misma unidad. Nada se convierte solo.
+- **Calculadora de pase:** `pase = lejano - cercano`, interés simple con base de
+  días configurable (365 por defecto). Todos los costos los carga el usuario; no
+  hay valores por defecto. No recomienda operar.
+- **Validación numérica:** `float`, `bool`, texto, `NaN` e infinitos se rechazan
+  (`as_decimal`).
+- **Verificación:** los tests usan datos de prueba inventados y marcados como
+  tales; un caso de pase se contrastó a mano (91 días, pase 3,33 %, anualizado
+  13,37 %). Eso prueba la aritmética, **no** que los resultados sirvan para
+  decidir: no hay todavía datos reales cargados.
+- **Pendiente:** calculadora de warrants (costo financiero, tasa y plazos los
+  carga el usuario), definición de campaña, y conectar series reales.
+
 ## Reglas de datos vigentes (aplican a todo el desarrollo futuro)
 
 1. Preservar los datos originales; la normalización no los reemplaza.
