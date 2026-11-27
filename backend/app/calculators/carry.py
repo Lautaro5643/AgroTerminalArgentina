@@ -15,14 +15,23 @@ Convenciones (todas visibles en el resultado, ninguna escondida):
 * Costos anuales (``storage_cost_annual_pct`` y ``other_annual_costs_pct``):
   porcentaje anual **simple** sobre el precio cercano. ``12`` significa 12 %.
   Costo del período = ``cercano * pct / 100 * dias / base``.
+* Warrant (``warrant``, opcional): el usuario carga qué parte del valor se
+  financia (``financed_pct``, % del precio cercano), la tasa (``annual_rate_pct``,
+  % anual simple sobre lo financiado, en la **misma moneda** que el precio: no
+  hay conversión) y gastos de una sola vez (``upfront_costs_pct``, % del precio
+  cercano, que no dependen de los días). Interés del período =
+  ``cercano * financed_pct/100 * annual_rate_pct/100 * dias / base``. Aporta a
+  ``total_annual_costs_pct`` solo el interés (``financed_pct * annual_rate_pct
+  / 100``); los gastos de una sola vez restan del neto pero no son anuales.
 * Costos fijos (``fixed_costs``): importes en la misma unidad que el precio,
   para todo el período.
-* ``neto = pase - costos del período - costos fijos``.
-* ``neto_anual_pct = neto / cercano * base / dias * 100``. Sin costos fijos es
-  igual a ``pase_anualizado_pct - suma de costos anuales``.
+* ``neto = pase - costos del período - costos fijos - costos del warrant``.
+* ``neto_anual_pct = neto / cercano * base / dias * 100``. Sin costos fijos ni gastos
+  de una sola vez es igual a ``pase_anualizado_pct - suma de costos anuales``.
 
 No hay valores por defecto para ningún costo: el material oficial leído no
-informa porcentajes financiados, tasas ni comisiones típicas. Todo lo carga el
+informa porcentajes financiados, tasas ni comisiones típicas. Los conceptos del
+warrant llevan el prefijo ``warrant:`` en el detalle y ese prefijo está reservado. Todo lo carga el
 usuario. No hay conversión de moneda ni de unidad.
 """
 
@@ -46,6 +55,27 @@ class PriceTypeMismatchError(CarryInputError):
 
 
 @dataclass(frozen=True)
+class WarrantTerms:
+    """Condiciones de financiación con warrant, todas cargadas por el usuario."""
+
+    financed_pct: Decimal  # % del precio cercano que se financia (0 a 100)
+    annual_rate_pct: Decimal  # % anual simple sobre lo financiado
+    upfront_costs_pct: Mapping[str, Decimal] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        financed = as_decimal(self.financed_pct, "financed_pct")
+        rate = as_decimal(self.annual_rate_pct, "annual_rate_pct")
+        if not Decimal(0) <= financed <= HUNDRED:
+            raise CarryInputError("financed_pct debe estar entre 0 y 100")
+        if rate < 0:
+            raise CarryInputError("annual_rate_pct no puede ser negativo")
+        upfront = _validate_costs(self.upfront_costs_pct, "gastos del warrant")
+        object.__setattr__(self, "financed_pct", financed)
+        object.__setattr__(self, "annual_rate_pct", rate)
+        object.__setattr__(self, "upfront_costs_pct", upfront)
+
+
+@dataclass(frozen=True)
 class CarryResult:
     pase: Price
     days: int
@@ -61,6 +91,8 @@ class CarryResult:
     price_type: PriceType
     # Detalle por concepto, en la unidad del precio y para todo el período.
     cost_breakdown: dict[str, Price] = field(default_factory=dict)
+    warrant_interest: Price | None = None  # None si no se cargó un warrant
+    warrant_upfront_total: Price | None = None
 
 
 def _validate_costs(costs: Mapping[str, Decimal | int] | None, what: str):
@@ -87,6 +119,7 @@ def calculate_carry(
     fixed_costs: Mapping[str, Decimal | int] | None = None,
     day_count_basis: int = 365,
     far_price_type: PriceType | None = None,
+    warrant: WarrantTerms | None = None,
 ) -> CarryResult:
     """Calcula el pase y su neto contra los costos cargados por el usuario.
 
@@ -138,8 +171,29 @@ def calculate_carry(
         breakdown[label] = Price(amount, unit)
         fixed_total += amount
 
+    warrant_interest = warrant_upfront = None
+    warrant_total = Decimal(0)
+    if warrant is not None:
+        for label in list(others) + list(fixed):
+            if label.startswith("warrant:"):
+                raise CarryInputError("el prefijo 'warrant:' está reservado")
+        interest = (
+            near.value * warrant.financed_pct / HUNDRED
+            * warrant.annual_rate_pct / HUNDRED * period
+        )
+        breakdown["warrant: interés"] = Price(interest, unit)
+        upfront_total = Decimal(0)
+        for label, pct in warrant.upfront_costs_pct.items():
+            amount = near.value * pct / HUNDRED
+            breakdown[f"warrant: {label}"] = Price(amount, unit)
+            upfront_total += amount
+        annual_total += warrant.financed_pct * warrant.annual_rate_pct / HUNDRED
+        warrant_interest = Price(interest, unit)
+        warrant_upfront = Price(upfront_total, unit)
+        warrant_total = interest + upfront_total
+
     pase_value = far.value - near.value
-    total_cost = carry_cost + fixed_total
+    total_cost = carry_cost + fixed_total + warrant_total
     net = pase_value - total_cost
     pase_pct = pase_value / near.value * HUNDRED
 
@@ -157,4 +211,6 @@ def calculate_carry(
         net_annual_pct=net / near.value * basis / Decimal(days) * HUNDRED,
         price_type=price_type,
         cost_breakdown=breakdown,
+        warrant_interest=warrant_interest,
+        warrant_upfront_total=warrant_upfront,
     )

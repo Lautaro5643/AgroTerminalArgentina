@@ -179,8 +179,16 @@ Fecha de inicio del registro: 2026-11-22 (Sprint 01).
   tales; un caso de pase se contrastó a mano (91 días, pase 3,33 %, anualizado
   13,37 %). Eso prueba la aritmética, **no** que los resultados sirvan para
   decidir: no hay todavía datos reales cargados.
-- **Pendiente:** calculadora de warrants (costo financiero, tasa y plazos los
-  carga el usuario), definición de campaña, y conectar series reales.
+- **Warrant (2026-11-27):** `calculate_carry` acepta `WarrantTerms`: % financiado,
+  tasa anual simple sobre lo financiado y gastos de una sola vez (% del precio
+  cercano). Todo lo carga el usuario, sin valores por defecto, y la tasa debe
+  estar en la misma moneda que el precio (no hay conversión de moneda). El interés
+  suma a los costos anuales; los gastos únicos restan del neto pero no son
+  anuales. Es un modelo simple: **no verifiqué que represente cómo cobra un
+  warrant real** (el material oficial leído no informa porcentajes, tasas ni
+  plazos), así que sirve para ordenar la cuenta, no para reemplazar las
+  condiciones de la entidad financiera.
+- **Pendiente:** definición de campaña y conectar series reales.
 
 ## Reglas de datos vigentes (aplican a todo el desarrollo futuro)
 

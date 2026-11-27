@@ -10,7 +10,12 @@ from decimal import Decimal
 import pytest
 from fastapi.testclient import TestClient
 
-from app.calculators import CarryInputError, PriceTypeMismatchError, calculate_carry
+from app.calculators import (
+    CarryInputError,
+    PriceTypeMismatchError,
+    WarrantTerms,
+    calculate_carry,
+)
 from app.instruments import Price, PriceType, PriceUnit, UnitMismatchError
 from app.main import app
 
@@ -112,6 +117,67 @@ def test_rechaza_float():
         base(day_count_basis=365.0)
 
 
+# ---------- warrant ----------
+# 50 % financiado al 10 % anual: 400 * 0,5 * 0,10 * 0,2 = 4 de interés.
+# Gastos de una vez 0,5 % de 400 = 2. Neto: 12 - 8 (guardado) - 4 - 2 = -2.
+
+
+def terms(**kw):
+    params = dict(
+        financed_pct=Decimal(50), annual_rate_pct=Decimal(10),
+        upfront_costs_pct={"comisión": Decimal("0.5")},
+    )
+    params.update(kw)
+    return WarrantTerms(**params)
+
+
+def test_warrant_suma_interes_y_gastos_al_costo():
+    r = base(warrant=terms())
+    assert r.warrant_interest == usd(4)
+    assert r.warrant_upfront_total == usd(2)
+    assert r.cost_breakdown["warrant: interés"] == usd(4)
+    assert r.cost_breakdown["warrant: comisión"] == usd(2)
+    assert r.total_cost == usd(14)
+    assert r.net == usd(-2)
+    assert r.total_annual_costs_pct == Decimal(15)  # 10 guardado + 5 interés
+    assert r.net_annual_pct == Decimal("-2.5")  # 15 - 15 - 2,5 de gastos únicos
+
+
+def test_sin_warrant_no_hay_campos_de_warrant():
+    r = base()
+    assert r.warrant_interest is None and r.warrant_upfront_total is None
+
+
+def test_warrant_sin_financiar_no_cobra_interes():
+    r = base(warrant=terms(financed_pct=Decimal(0), upfront_costs_pct={}))
+    assert r.warrant_interest == usd(0)
+    assert r.net == usd(4)
+
+
+@pytest.mark.parametrize(
+    "kw",
+    [
+        {"financed_pct": Decimal(101)},
+        {"financed_pct": Decimal(-1)},
+        {"annual_rate_pct": Decimal(-1)},
+        {"upfront_costs_pct": {"x": Decimal(-1)}},
+    ],
+)
+def test_warrant_entradas_invalidas(kw):
+    with pytest.raises(CarryInputError):
+        terms(**kw)
+
+
+def test_warrant_rechaza_float():
+    with pytest.raises(TypeError):
+        terms(annual_rate_pct=10.5)
+
+
+def test_prefijo_warrant_reservado():
+    with pytest.raises(CarryInputError):
+        base(warrant=terms(), fixed_costs={"warrant: otro": Decimal(1)})
+
+
 # ---------- endpoint ----------
 
 client = TestClient(app)
@@ -139,4 +205,23 @@ def test_endpoint_responde_422_ante_fechas_invertidas():
 
 def test_endpoint_exige_el_tipo_de_precio():
     body = {k: v for k, v in BODY.items() if k != "price_type"}
+    assert client.post("/tools/carry", json=body).status_code == 422
+
+
+def test_endpoint_con_warrant():
+    body = {
+        **BODY,
+        "warrant": {
+            "financed_pct": "50", "annual_rate_pct": "10",
+            "upfront_costs_pct": {"comisión": "0.5"},
+        },
+    }
+    data = client.post("/tools/carry", json=body).json()
+    assert Decimal(data["net"]["value"]) == -2
+    assert Decimal(data["warrant_interest"]["value"]) == 4
+    assert Decimal(data["net_annual_pct"]) == Decimal("-2.5")
+
+
+def test_endpoint_warrant_invalido_da_422():
+    body = {**BODY, "warrant": {"financed_pct": "150", "annual_rate_pct": "10"}}
     assert client.post("/tools/carry", json=body).status_code == 422

@@ -9,10 +9,21 @@ from decimal import Decimal
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
-from app.calculators import CarryInputError, calculate_carry
+from app.calculators import CarryInputError, WarrantTerms, calculate_carry
 from app.instruments import PriceType, PriceUnit, Price, UnitMismatchError
 
 router = APIRouter(prefix="/tools", tags=["tools"])
+
+
+class WarrantRequest(BaseModel):
+    financed_pct: Decimal = Field(description="% del precio cercano que se financia (0 a 100)")
+    annual_rate_pct: Decimal = Field(
+        description="Tasa anual simple sobre lo financiado, en la moneda del precio"
+    )
+    upfront_costs_pct: dict[str, Decimal] = Field(
+        default_factory=dict,
+        description="Gastos de una sola vez, % del precio cercano, por concepto",
+    )
 
 
 class CarryRequest(BaseModel):
@@ -36,6 +47,9 @@ class CarryRequest(BaseModel):
         description="Costos fijos del período, en la unidad del precio, por concepto",
     )
     day_count_basis: int = Field(default=365, description="Base de días del año")
+    warrant: WarrantRequest | None = Field(
+        default=None, description="Financiación con warrant (opcional, todo lo carga el usuario)"
+    )
 
 
 class AmountOut(BaseModel):
@@ -57,6 +71,8 @@ class CarryResponse(BaseModel):
     net_annual_pct: Decimal
     price_type: PriceType
     cost_breakdown: dict[str, AmountOut]
+    warrant_interest: AmountOut | None = None
+    warrant_upfront_total: AmountOut | None = None
 
 
 def _amount(price: Price) -> AmountOut:
@@ -77,6 +93,15 @@ def carry(request: CarryRequest) -> CarryResponse:
             other_annual_costs_pct=request.other_annual_costs_pct,
             fixed_costs=request.fixed_costs,
             day_count_basis=request.day_count_basis,
+            warrant=(
+                WarrantTerms(
+                    financed_pct=request.warrant.financed_pct,
+                    annual_rate_pct=request.warrant.annual_rate_pct,
+                    upfront_costs_pct=request.warrant.upfront_costs_pct,
+                )
+                if request.warrant
+                else None
+            ),
         )
     except (CarryInputError, UnitMismatchError) as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
@@ -94,4 +119,8 @@ def carry(request: CarryRequest) -> CarryResponse:
         net_annual_pct=r.net_annual_pct,
         price_type=r.price_type,
         cost_breakdown={k: _amount(v) for k, v in r.cost_breakdown.items()},
+        warrant_interest=_amount(r.warrant_interest) if r.warrant_interest else None,
+        warrant_upfront_total=(
+            _amount(r.warrant_upfront_total) if r.warrant_upfront_total else None
+        ),
     )

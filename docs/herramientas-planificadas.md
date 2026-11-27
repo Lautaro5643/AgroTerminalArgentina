@@ -97,8 +97,8 @@ acopios se consultan hoy y de dónde salen.
 1. **Hecho (2026-11-27):** comparador estacional y relaciones
    (`app/analytics/`), probados con datos de prueba marcados como tales.
 2. **Hecho (2026-11-27):** calculadora de pase y guardado
-   (`app/calculators/carry.py`, `POST /tools/carry`). Falta sumarle el costo de
-   warrant (todo cargado por el usuario).
+   (`app/calculators/carry.py`, `POST /tools/carry`). Incluye el costo de
+   warrant opcional (todo cargado por el usuario).
 3. Libro de posiciones.
 4. Conectar fuentes a medida que lleguen los accesos, empezando por las ya
    verificadas, y verificar las no investigadas una por una.
